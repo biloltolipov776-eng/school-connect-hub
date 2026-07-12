@@ -1,0 +1,118 @@
+.navbar {
+  position: fixed;
+  top: 0; left: 0; right: 0;
+  z-index: 1000;
+  padding: 18px 0;
+  transition: all 0.3s ease;
+}
+.navbar--scrolled {
+  background: rgba(10,10,15,0.92);
+  backdrop-filter: blur(20px);
+  border-bottom: 1px solid rgba(255,255,255,0.06);
+  padding: 12px 0;
+  box-shadow: 0 4px 24px rgba(0,0,0,0.3);
+}
+.navbar__inner {
+  display: flex;
+  align-items: center;
+  gap: 32px;
+}
+.navbar__logo {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  font-family: 'Montserrat', sans-serif;
+  font-weight: 900;
+  font-size: 1.5rem;
+  color: #FFD600;
+  flex-shrink: 0;
+}
+.navbar__links {
+  display: flex;
+  align-items: center;
+  gap: 28px;
+  flex: 1;
+}
+.navbar__links a {
+  font-size: 0.95rem;
+  font-weight: 500;
+  color: #aaa;
+  transition: color 0.2s;
+  position: relative;
+}
+.navbar__links a::after {
+  content: '';
+  position: absolute;
+  bottom: -4px; left: 0;
+  width: 0; height: 2px;
+  background: #FFD600;
+  transition: width 0.25s;
+  border-radius: 2px;
+}
+.navbar__links a:hover,
+.navbar__links a.active { color: #FFD600; }
+.navbar__links a:hover::after,
+.navbar__links a.active::after { width: 100%; }
+
+.navbar__actions {
+  margin-left: auto;
+  display: flex;
+  align-items: center;
+  gap: 12px;
+}
+
+/* Mobile Bottom Navigation */
+.mobile-bottom-nav {
+  display: none;
+  position: fixed;
+  bottom: 0; left: 0; right: 0;
+  z-index: 1000;
+  background: rgba(10, 10, 15, 0.97);
+  backdrop-filter: blur(20px);
+  border-top: 1px solid rgba(255,255,255,0.07);
+  padding: 8px 0 12px;
+}
+
+.bottom-nav-item {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 4px;
+  color: #666;
+  font-size: 0.7rem;
+  font-weight: 500;
+  padding: 6px 0;
+  flex: 1;
+  cursor: pointer;
+  background: none;
+  border: none;
+  transition: color 0.2s;
+  font-family: inherit;
+}
+
+.bottom-nav-item svg { transition: color 0.2s; }
+
+.bottom-nav-item:hover,
+.bottom-nav-item.active {
+  color: #FFD600;
+}
+.bottom-nav-item.active svg { color: #FFD600; }
+
+/* Desktop: hide bottom nav, show navbar links */
+@media (min-width: 769px) {
+  .mobile-bottom-nav { display: none !important; }
+  .desktop-only { display: flex !important; }
+}
+
+/* Mobile: show bottom nav, hide desktop links */
+@media (max-width: 768px) {
+  .desktop-only { display: none !important; }
+  .mobile-bottom-nav {
+    display: flex;
+    justify-content: space-around;
+  }
+  /* Add padding so content not hidden behind bottom nav */
+  body { padding-bottom: 72px; }
+}
+
