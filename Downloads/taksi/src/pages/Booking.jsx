@@ -156,12 +156,24 @@ export default function Booking() {
   const [routeDurMin, setRouteDurMin]   = useState(null); // minutes, real travel time
   const total = routeDist ? Math.round(routeDist * selected.price) : null;
 
-  // Auth
+  // Auth & Saved Card
   useEffect(() => {
     const u = localStorage.getItem('taxiuz_user');
     if (u) setUser(JSON.parse(u));
     const handler = () => { const u2 = localStorage.getItem('taxiuz_user'); setUser(u2 ? JSON.parse(u2) : null); };
     window.addEventListener('auth-change', handler);
+    
+    // Load saved card if available
+    const savedCard = localStorage.getItem('taxiuz_saved_card');
+    if (savedCard) {
+      try {
+        const sc = JSON.parse(savedCard);
+        setCardNum(sc.cardNum || '');
+        setCardExp(sc.cardExp || '');
+        setCardCvv(sc.cardCvv || '');
+      } catch (e) {}
+    }
+    
     return () => window.removeEventListener('auth-change', handler);
   }, []);
 
@@ -265,10 +277,12 @@ export default function Booking() {
       params: { routingMode: 'auto' }
     }, {
       boundsAutoApply: true,
-      wayPointVisible: false,
-      routeActiveStrokeWidth: 5,
+      wayPointVisible: true,
+      routeActiveStrokeWidth: 6,
       routeActiveStrokeColor: '#FFD600',
-      routeStrokeStyle: 'solid'
+      routeStrokeWidth: 4,
+      routeStrokeColor: '#888888',
+      pinIconFillColor: '#FFD600',
     });
 
     ymapRef.current.geoObjects.add(multiRoute);
@@ -358,6 +372,7 @@ export default function Booking() {
       if (cardNum.replace(/\s/g, '').length !== 16) { setError("Karta raqamini to'liq kiriting (16 xona)"); return; }
       if (cardExp.length !== 5) { setError("Karta amal qilish muddatini to'liq kiriting (MM/YY)"); return; }
       if (cardCvv.length < 3) { setError("CVV kodini to'liq kiriting"); return; }
+      localStorage.setItem('taxiuz_saved_card', JSON.stringify({ cardNum, cardExp, cardCvv }));
     }
     setError(''); setStep(2);
 
