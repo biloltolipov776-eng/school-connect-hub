@@ -11,8 +11,8 @@ import { flagEmoji, countryName } from "@/lib/countries";
 
 const SearchSchema = z.object({
   init: z.coerce.number().default(300),
-  inc: z.coerce.number().default(0),
-  cat: z.enum(["bullet", "blitz", "rapid"]).default("blitz"),
+  inc:  z.coerce.number().default(0),
+  cat:  z.enum(["bullet", "blitz", "rapid"]).default("blitz"),
   diff: z.enum(["easy", "medium", "hard"]).default("medium"),
 });
 
@@ -34,14 +34,14 @@ function fmt(sec: number) {
   return `${Math.floor(s / 60)}:${(s % 60).toString().padStart(2, "0")}`;
 }
 
-/** Build square highlight styles: selected square + legal-move dots + premove */
+/** Dot-style highlights for legal moves, selected square and premove squares */
 function buildSquareStyles(
-  selectedSq: string | null,
-  legalTargets: string[],
-  premoveSq: string | null,
+  selectedSq:     string | null,
+  legalTargets:   string[],
+  premoveSq:      string | null,
   premoveTargets: string[],
-  lightColor: string,
-  darkColor: string,
+  lightColor:     string,
+  darkColor:      string,
 ): Record<string, React.CSSProperties> {
   const styles: Record<string, React.CSSProperties> = {};
 
@@ -59,7 +59,6 @@ function buildSquareStyles(
     };
   }
 
-  // Premove highlights (purple/blue)
   if (premoveSq) {
     styles[premoveSq] = { backgroundColor: "rgba(100, 120, 255, 0.55)" };
   }
@@ -72,13 +71,13 @@ function buildSquareStyles(
 
 function PlayAI() {
   const search = Route.useSearch();
-  const { profile } = useAuth();
-  const navigate = useNavigate();
-  const askAi   = useServerFn(getAiMove);
-  const applyRating = useServerFn(applyRatingChange);
+  const { profile }  = useAuth();
+  const navigate     = useNavigate();
+  const askAi        = useServerFn(getAiMove);
+  const applyRating  = useServerFn(applyRatingChange);
 
-  const [game] = useState(() => new Chess());
-  const [fen, setFen] = useState(game.fen());
+  const [game]       = useState(() => new Chess());
+  const [fen, setFen]         = useState(game.fen());
   const [status, setStatus]   = useState<string>("");
   const [thinking, setThinking] = useState(false);
   const [whiteMs, setWhiteMs] = useState(search.init * 1000);
@@ -87,31 +86,32 @@ function PlayAI() {
   const [ratingResult, setRatingResult] = useState<{ rating: number; delta: number } | null>(null);
   const [flagTooltip, setFlagTooltip] = useState<null | "me" | "ai">(null);
 
-  // Click-to-move state
+  // Click-to-move
   const [selectedSq,   setSelectedSq]   = useState<string | null>(null);
   const [legalTargets, setLegalTargets] = useState<string[]>([]);
 
-  // Premove state (fires when it becomes player's turn again)
+  // Premove
   const [premoveSq,      setPremoveSq]      = useState<string | null>(null);
   const [premoveTarget,  setPremoveTarget]  = useState<string | null>(null);
   const [premoveTargets, setPremoveTargets] = useState<string[]>([]);
+
   const premoveEnabled = profile?.premoves_enabled ?? true;
-
-  const lastTickRef = useRef<number>(Date.now());
-  const finishedRef = useRef(false);
-
   const playerColor: "w" | "b" = "w";
   const theme = BOARD_THEMES[profile?.board_theme ?? "classic"] ?? BOARD_THEMES.classic;
+
+  const finishedRef  = useRef(false);
+  const thinkingRef  = useRef(false);
+  const lastTickRef  = useRef(Date.now());
 
   // ── Clock ────────────────────────────────────────────────────────────────
   useEffect(() => {
     if (finished) return;
     const id = setInterval(() => {
-      const now = Date.now();
+      const now   = Date.now();
       const delta = now - lastTickRef.current;
       lastTickRef.current = now;
       if (game.turn() === "w") setWhiteMs((v) => v - delta);
-      else setBlackMs((v) => v - delta);
+      else                     setBlackMs((v) => v - delta);
     }, 200);
     return () => clearInterval(id);
   }, [game, finished]);
@@ -123,16 +123,16 @@ function PlayAI() {
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [whiteMs, blackMs]);
 
-  // ── Game-end helpers ─────────────────────────────────────────────────────
+  // ── Game end ─────────────────────────────────────────────────────────────
   const checkEnd = useCallback((): boolean => {
     if (game.isCheckmate()) {
       const winner = game.turn() === "w" ? "b" : "w";
       void doFinish(winner === playerColor ? "win" : "loss", "Мат");
       return true;
     }
-    if (game.isStalemate())           { void doFinish("draw", "Пат");                       return true; }
-    if (game.isThreefoldRepetition()) { void doFinish("draw", "Троекратное повторение");    return true; }
-    if (game.isInsufficientMaterial() || game.isDraw()) { void doFinish("draw", "Ничья");  return true; }
+    if (game.isStalemate())            { void doFinish("draw", "Пат");                    return true; }
+    if (game.isThreefoldRepetition())  { void doFinish("draw", "Троекратное повторение"); return true; }
+    if (game.isInsufficientMaterial() || game.isDraw()) { void doFinish("draw", "Ничья");return true; }
     return false;
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [game]);
@@ -141,17 +141,17 @@ function PlayAI() {
     if (finishedRef.current) return;
     finishedRef.current = true;
     setFinished(result);
-    setStatus(reason + " · " + (result === "win" ? "Победа!" : result === "loss" ? "Поражение" : "Ничья"));
-    try {
-      const r = await applyRating({ data: { category: search.cat, result } });
-      setRatingResult(r);
-    } catch (e) { console.error(e); }
+    setStatus(`${reason} · ${result === "win" ? "Победа!" : result === "loss" ? "Поражение" : "Ничья"}`);
+    try { setRatingResult(await applyRating({ data: { category: search.cat, result } })); }
+    catch (e) { console.error(e); }
   };
 
-  // ── AI move ──────────────────────────────────────────────────────────────
+  // ── AI turn ──────────────────────────────────────────────────────────────
   const triggerAi = useCallback(async () => {
     if (game.isGameOver() || finishedRef.current) return;
     if (game.turn() === playerColor) return;
+    if (thinkingRef.current) return;
+    thinkingRef.current = true;
     setThinking(true);
     try {
       const move = await askAi({ data: { fen: game.fen(), difficulty: search.diff } });
@@ -164,14 +164,16 @@ function PlayAI() {
         }
       }
     } finally {
+      thinkingRef.current = false;
       setThinking(false);
     }
   // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [game, checkEnd, search]);
 
-  // After AI move, fire queued premove if any
+  // After AI finishes, fire queued premove
   useEffect(() => {
-    if (thinking || finished || game.turn() !== playerColor) return;
+    if (thinking || finished) return;
+    if (game.turn() !== playerColor) return;
     if (!premoveEnabled || !premoveSq || !premoveTarget) return;
     const from = premoveSq;
     const to   = premoveTarget;
@@ -188,17 +190,17 @@ function PlayAI() {
           setTimeout(() => void triggerAi(), 300);
         }
       }
-    } catch { /* premove was illegal — just discard */ }
+    } catch { /* premove became illegal, discard */ }
   // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [thinking, game.turn()]);
+  }, [thinking]);
 
-  // ── Execute player move immediately ─────────────────────────────────────
+  // ── Execute player move ───────────────────────────────────────────────────
   const executePlayerMove = useCallback((from: string, to: string): boolean => {
     if (finishedRef.current) return false;
     if (game.turn() !== playerColor) return false;
     try {
-      const move = game.move({ from, to, promotion: "q" });
-      if (!move) return false;
+      const m = game.move({ from, to, promotion: "q" });
+      if (!m) return false;
     } catch { return false; }
     setFen(game.fen());
     setWhiteMs((v) => v + search.inc * 1000);
@@ -212,25 +214,46 @@ function PlayAI() {
   // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [game, checkEnd, triggerAi, search.inc]);
 
-  // ── Click-to-move handler ────────────────────────────────────────────────
+  // ── onPieceDrop — v5 signature: (source, target, piece) positional ───────
+  const onPieceDrop = useCallback((sourceSquare: string, targetSquare: string): boolean => {
+    if (finishedRef.current) return false;
+
+    // AI's turn → register premove
+    if (game.turn() !== playerColor) {
+      if (!premoveEnabled) return false;
+      const piece = game.get(sourceSquare as Parameters<typeof game.get>[0]);
+      if (piece && piece.color === playerColor) {
+        setPremoveSq(sourceSquare);
+        setPremoveTarget(targetSquare);
+        setPremoveTargets([targetSquare]);
+        setSelectedSq(null);
+        setLegalTargets([]);
+        return true;
+      }
+      return false;
+    }
+
+    const moved = executePlayerMove(sourceSquare, targetSquare);
+    if (moved) { setSelectedSq(null); setLegalTargets([]); }
+    return moved;
+  }, [game, premoveEnabled, playerColor, executePlayerMove]);
+
+  // ── onSquareClick — click-to-move ─────────────────────────────────────────
   const onSquareClick = useCallback((square: string) => {
     if (finishedRef.current) return;
 
-    // It's AI's turn — register premove if enabled
+    // AI's turn → premove selection
     if (game.turn() !== playerColor) {
       if (!premoveEnabled) return;
       if (premoveSq) {
-        // Second click = confirm premove destination
+        // Second click: confirm destination
         setPremoveTarget(square);
-        // Show which squares are threatened (for UI)
         setPremoveTargets([square]);
         setPremoveSq(null);
       } else {
-        // First click during AI turn = select premove origin
         const piece = game.get(square as Parameters<typeof game.get>[0]);
         if (piece && piece.color === playerColor) {
           setPremoveSq(square);
-          // Tentatively show where this piece could move (ignoring turn)
           const tentative = game.moves({ square: square as Parameters<typeof game.moves>[0], verbose: true });
           setPremoveTargets(tentative.map((m) => m.to));
         }
@@ -238,17 +261,15 @@ function PlayAI() {
       return;
     }
 
-    // It's player's turn
+    // Player's turn
     if (selectedSq) {
       if (selectedSq === square) {
-        // Deselect
         setSelectedSq(null);
         setLegalTargets([]);
         return;
       }
       const moved = executePlayerMove(selectedSq, square);
       if (!moved) {
-        // Maybe re-selecting a different own piece
         const piece = game.get(square as Parameters<typeof game.get>[0]);
         if (piece && piece.color === playerColor) {
           setSelectedSq(square);
@@ -269,44 +290,13 @@ function PlayAI() {
     }
   }, [game, selectedSq, premoveSq, premoveEnabled, playerColor, executePlayerMove]);
 
-  // ── Drag-and-drop ─────────────────────────────────────────────────────────
-  const onPieceDrop = useCallback(({ sourceSquare, targetSquare }: { sourceSquare: string; targetSquare: string | null }): boolean => {
-    if (!targetSquare || finishedRef.current) return false;
-
-    // Dragging during AI turn = set premove
-    if (game.turn() !== playerColor) {
-      if (!premoveEnabled) return false;
-      const piece = game.get(sourceSquare as Parameters<typeof game.get>[0]);
-      if (piece && piece.color === playerColor) {
-        setPremoveSq(sourceSquare);
-        setPremoveTarget(targetSquare);
-        setPremoveTargets([targetSquare]);
-        setSelectedSq(null);
-        setLegalTargets([]);
-        return true; // visual-only, will execute later
-      }
-      return false;
-    }
-
-    const moved = executePlayerMove(sourceSquare, targetSquare);
-    if (moved) { setSelectedSq(null); setLegalTargets([]); }
-    return moved;
-  }, [game, premoveEnabled, playerColor, executePlayerMove]);
-
-  // ── Flag tooltip ─────────────────────────────────────────────────────────
   const showFlag = (who: "me" | "ai") => {
     setFlagTooltip(who);
     setTimeout(() => setFlagTooltip((c) => (c === who ? null : c)), 1800);
   };
 
-  // ── Square styles ─────────────────────────────────────────────────────────
   const customSquareStyles = buildSquareStyles(
-    selectedSq,
-    legalTargets,
-    premoveSq,
-    premoveTargets,
-    theme.light,
-    theme.dark,
+    selectedSq, legalTargets, premoveSq, premoveTargets, theme.light, theme.dark,
   );
 
   if (!profile) return <div className="min-h-screen grid place-items-center text-muted-foreground">…</div>;
@@ -318,16 +308,14 @@ function PlayAI() {
       <header className="flex items-center justify-between p-3 md:p-4">
         <Link to="/home" className="text-primary text-sm">← В меню</Link>
         <div className="text-sm text-muted-foreground text-center">
-          {search.cat === "bullet" ? "Пуля" : search.cat === "blitz" ? "Блиц" : "Рапид"} ·{" "}
-          {Math.floor(search.init / 60)}+{search.inc}
+          {search.cat === "bullet" ? "Пуля" : search.cat === "blitz" ? "Блиц" : "Рапид"} · {Math.floor(search.init / 60)}+{search.inc}
         </div>
         <div className="w-16" />
       </header>
 
-      {/* Board container — full-width on mobile, max 600px */}
       <div className="w-full max-w-[min(100vw,600px)] mx-auto px-2 md:px-4 pb-10 space-y-2">
 
-        {/* Opponent (AI) */}
+        {/* Opponent */}
         <div className="card-panel p-3 flex items-center gap-3">
           <div className="h-10 w-10 rounded-full grid place-items-center bg-muted text-xl border border-border flex-shrink-0">🤖</div>
           <div className="flex-1 min-w-0">
@@ -346,12 +334,12 @@ function PlayAI() {
               </span>
             </div>
           </div>
-          <div className={`font-mono text-lg tabular-nums px-3 py-1 rounded-lg flex-shrink-0 ${game.turn() === "b" && !finished ? "bg-primary text-primary-foreground" : "bg-muted"}`}>
+          <div className={`font-mono text-lg tabular-nums px-3 py-1 rounded-lg flex-shrink-0 ${!finished && game.turn() === "b" ? "bg-primary text-primary-foreground" : "bg-muted"}`}>
             {fmt(blackMs / 1000)}
           </div>
         </div>
 
-        {/* Board — direct props, NOT options={} */}
+        {/* Board — ALL correct v5 prop names */}
         <div className="card-panel p-2 md:p-3">
           <Chessboard
             position={fen}
@@ -359,9 +347,9 @@ function PlayAI() {
             onPieceDrop={onPieceDrop}
             onSquareClick={onSquareClick}
             customSquareStyles={customSquareStyles}
-            lightSquareStyle={{ backgroundColor: theme.light }}
-            darkSquareStyle={{ backgroundColor: theme.dark }}
-            allowDragging={!finished && !thinking}
+            customLightSquareStyle={{ backgroundColor: theme.light }}
+            customDarkSquareStyle={{ backgroundColor: theme.dark }}
+            arePiecesDraggable={!finished && !thinking}
             animationDurationInMs={200}
           />
         </div>
@@ -390,24 +378,24 @@ function PlayAI() {
               </span>
             </div>
           </div>
-          <div className={`font-mono text-lg tabular-nums px-3 py-1 rounded-lg flex-shrink-0 ${game.turn() === "w" && !finished ? "bg-primary text-primary-foreground" : "bg-muted"}`}>
+          <div className={`font-mono text-lg tabular-nums px-3 py-1 rounded-lg flex-shrink-0 ${!finished && game.turn() === "w" ? "bg-primary text-primary-foreground" : "bg-muted"}`}>
             {fmt(whiteMs / 1000)}
           </div>
         </div>
 
-        {/* Status bar */}
+        {/* Status */}
         <div className="px-2 text-sm text-muted-foreground flex items-center gap-2">
           {thinking
-            ? <><span className="animate-spin inline-block">⟳</span> ИИ думает…</>
-            : premoveSq
+            ? <><span className="inline-block animate-spin">⟳</span> ИИ думает…</>
+            : premoveSq || premoveTarget
               ? <span className="text-blue-400">↩ Премув запланирован</span>
               : status
-                ? <span className={status.includes("Победа") ? "text-green-400" : status.includes("Поражение") ? "text-red-400" : ""}>{status}</span>
+                ? <span>{status}</span>
                 : <span>{isPlayerTurn ? "Ваш ход" : "Ход ИИ"}</span>
           }
         </div>
 
-        {/* Result card */}
+        {/* Result */}
         {finished && (
           <div className="card-panel p-6 text-center space-y-3">
             <div className="text-3xl font-bold">
@@ -422,9 +410,7 @@ function PlayAI() {
                 </span>
               </div>
             )}
-            <button className="btn-primary" onClick={() => navigate({ to: "/home" })}>
-              В меню
-            </button>
+            <button className="btn-primary" onClick={() => navigate({ to: "/home" })}>В меню</button>
           </div>
         )}
       </div>
