@@ -1,5 +1,5 @@
 import { createFileRoute, Link, useNavigate } from "@tanstack/react-router";
-import { useEffect, useRef, useState, useCallback } from "react";
+import { useEffect, useRef, useState, useCallback, useMemo } from "react";
 import { Chess } from "chess.js";
 import { Chessboard } from "react-chessboard";
 import { z } from "zod";
@@ -214,9 +214,9 @@ function PlayAI() {
   // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [game, checkEnd, triggerAi, search.inc]);
 
-  // ── onPieceDrop — v5 signature: (source, target, piece) positional ───────
-  const onPieceDrop = useCallback((sourceSquare: string, targetSquare: string): boolean => {
-    if (finishedRef.current) return false;
+  // ── onPieceDrop — v5 signature: ({sourceSquare, targetSquare}) ───────
+  const onPieceDrop = useCallback(({ sourceSquare, targetSquare }: { sourceSquare: string; targetSquare: string | null }): boolean => {
+    if (!targetSquare || finishedRef.current) return false;
 
     // AI's turn → register premove
     if (game.turn() !== playerColor) {
@@ -239,7 +239,7 @@ function PlayAI() {
   }, [game, premoveEnabled, playerColor, executePlayerMove]);
 
   // ── onSquareClick — click-to-move ─────────────────────────────────────────
-  const onSquareClick = useCallback((square: string) => {
+  const onSquareClick = useCallback(({ square }: { square: string }) => {
     if (finishedRef.current) return;
 
     // AI's turn → premove selection
@@ -295,8 +295,23 @@ function PlayAI() {
     setTimeout(() => setFlagTooltip((c) => (c === who ? null : c)), 1800);
   };
 
-  const customSquareStyles = buildSquareStyles(
+  const squareStyles = buildSquareStyles(
     selectedSq, legalTargets, premoveSq, premoveTargets, theme.light, theme.dark,
+  );
+
+  const chessboardOptions = useMemo(
+    () => ({
+      position: fen,
+      boardOrientation: "white" as const,
+      onPieceDrop,
+      onSquareClick,
+      squareStyles,
+      lightSquareStyle: { backgroundColor: theme.light },
+      darkSquareStyle: { backgroundColor: theme.dark },
+      allowDragging: !finished && !thinking,
+      animationDurationInMs: 200,
+    }),
+    [fen, onPieceDrop, onSquareClick, squareStyles, theme.light, theme.dark, finished, thinking],
   );
 
   if (!profile) return <div className="min-h-screen grid place-items-center text-muted-foreground">…</div>;
@@ -339,19 +354,9 @@ function PlayAI() {
           </div>
         </div>
 
-        {/* Board — ALL correct v5 prop names */}
+        {/* Board */}
         <div className="card-panel p-2 md:p-3">
-          <Chessboard
-            position={fen}
-            boardOrientation="white"
-            onPieceDrop={onPieceDrop}
-            onSquareClick={onSquareClick}
-            customSquareStyles={customSquareStyles}
-            customLightSquareStyle={{ backgroundColor: theme.light }}
-            customDarkSquareStyle={{ backgroundColor: theme.dark }}
-            arePiecesDraggable={!finished && !thinking}
-            animationDurationInMs={200}
-          />
+          <Chessboard options={chessboardOptions} />
         </div>
 
         {/* Player */}
