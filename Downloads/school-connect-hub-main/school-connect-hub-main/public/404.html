@@ -1,0 +1,11 @@
+<!DOCTYPE html>
+<html><head><meta charset="UTF-8"><title>Redirecting...</title>
+<script>
+  // SPA fallback for static hosts that serve 404.html on unknown routes.
+  // Preserve the original path/query/hash and rewrite to index.html.
+  var l = window.location;
+  var target = l.pathname + l.search + l.hash;
+  sessionStorage.setItem('__spa_redirect__', target);
+  l.replace('/');
+</script>
+</head><body></body></html>

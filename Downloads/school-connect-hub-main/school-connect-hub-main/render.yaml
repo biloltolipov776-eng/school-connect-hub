@@ -1,0 +1,17 @@
+services:
+  - type: static
+    name: subdomain-creator-pro
+    env: static
+    buildCommand: npm install && npm run build
+    publishDir: dist
+    envVars:
+      - key: VITE_SUPABASE_URL
+        value: https://iudwxuyipxioeluljznk.supabase.co
+      - key: VITE_SUPABASE_PUBLISHABLE_KEY
+        value: eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6Iml1ZHd4dXlpcHhpb2VsdWxqem5rIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NzgzMzUxMTIsImV4cCI6MjA5MzkxMTExMn0.4PW158E9be01KqgL3sQ-vSdBNShLaZl5SeyboG2uSxA
+      - key: VITE_SUPABASE_PROJECT_ID
+        value: iudwxuyipxioeluljznk
+    routes:
+      - type: rewrite
+        source: /*
+        destination: /index.html
